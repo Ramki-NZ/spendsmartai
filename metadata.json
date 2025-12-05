@@ -1,0 +1,9 @@
+{
+  "name": "SpendSmartAI",
+  "description": "An AI-powered expense tracker and budget advisor that analyzes receipts and bank statements to optimize your spending.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
