@@ -11,10 +11,12 @@ terraform {
   }
 }
 
-# --- Variables (Updated per your request) ---
+# -------------------------------
+# Variables
+# -------------------------------
 variable "gcp_project_id" {
   description = "Your Google Cloud Project ID"
-  default     = "aisave4u" 
+  default     = "aisave4u"
 }
 
 variable "gcp_region" {
@@ -37,7 +39,9 @@ variable "subdomain" {
   default     = "www"
 }
 
-# --- Provider Configuration ---
+# -------------------------------
+# Providers
+# -------------------------------
 provider "google" {
   project = var.gcp_project_id
   region  = var.gcp_region
@@ -47,7 +51,9 @@ provider "azurerm" {
   features {}
 }
 
-# --- 1. Enable Required Google APIs ---
+# -------------------------------
+# 1. Enable Required Google APIs
+# -------------------------------
 resource "google_project_service" "run_api" {
   service            = "run.googleapis.com"
   disable_on_destroy = false
@@ -63,27 +69,38 @@ resource "google_project_service" "cloudbuild_api" {
   disable_on_destroy = false
 }
 
-# --- 2. Create Artifact Registry ---
+# -------------------------------
+# 2. Create Artifact Registry
+# -------------------------------
 resource "google_artifact_registry_repository" "app_repo" {
   location      = var.gcp_region
   repository_id = "ai-apps-repo"
   description   = "Docker repository for AI Apps"
   format        = "DOCKER"
-  depends_on    = [google_project_service.artifact_registry_api]
+
+  depends_on = [
+    google_project_service.artifact_registry_api
+  ]
 }
 
-# --- 3. Build & Push Docker Image ---
+# -------------------------------
+# 3. Build & Push Docker Image
+# -------------------------------
 resource "null_resource" "docker_build" {
+  # Only hash real source files, ignore Terraform internals/state
   triggers = {
-    dir_sha1 = sha1(join("", [for f in fileset(".", "**") : filesha1(f)]))
+    dir_sha1 = sha1(join("", [
+      for f in fileset(path.module, "**") :
+      filesha1(f)
+      if !startswith(f, ".terraform/")
+        && !startswith(f, ".git/")
+        && f != "terraform.tfstate"
+        && f != "terraform.tfstate.backup"
+    ]))
   }
 
   provisioner "local-exec" {
-    command = <<EOT
-      gcloud builds submit . \
-        --tag ${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.app_repo.repository_id}/${var.subdomain}-app:latest \
-        --project ${var.gcp_project_id}
-    EOT
+    command = "gcloud builds submit . --tag ${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.app_repo.repository_id}/${var.subdomain}-app:latest --project ${var.gcp_project_id}"
   }
 
   depends_on = [
@@ -92,9 +109,11 @@ resource "null_resource" "docker_build" {
   ]
 }
 
-# --- 4. Deploy Cloud Run Service ---
+# -------------------------------
+# 4. Deploy Cloud Run Service
+# -------------------------------
 resource "google_cloud_run_service" "webapp" {
-  # Dynamic naming: "aisave4u-payload-service"
+  # Dynamic naming: "aisave4u-www-service"
   name     = "${var.gcp_project_id}-${var.subdomain}-service"
   location = var.gcp_region
 
@@ -102,6 +121,7 @@ resource "google_cloud_run_service" "webapp" {
     spec {
       containers {
         image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.app_repo.repository_id}/${var.subdomain}-app:latest"
+
         ports {
           container_port = 8080
         }
@@ -114,10 +134,15 @@ resource "google_cloud_run_service" "webapp" {
     latest_revision = true
   }
 
-  depends_on = [null_resource.docker_build]
+  depends_on = [
+    null_resource.docker_build,
+    google_project_service.run_api
+  ]
 }
 
-# --- 5. Make it Public ---
+# -------------------------------
+# 5. Make Cloud Run Public
+# -------------------------------
 resource "google_cloud_run_service_iam_member" "public_access" {
   service  = google_cloud_run_service.webapp.name
   location = google_cloud_run_service.webapp.location
@@ -125,7 +150,9 @@ resource "google_cloud_run_service_iam_member" "public_access" {
   member   = "allUsers"
 }
 
-# --- 6. Cloud Run Domain Mapping ---
+# -------------------------------
+# 6. Cloud Run Domain Mapping
+# -------------------------------
 resource "google_cloud_run_domain_mapping" "custom_domain" {
   location = var.gcp_region
   name     = "${var.subdomain}.${var.domain_name}"
@@ -137,9 +164,15 @@ resource "google_cloud_run_domain_mapping" "custom_domain" {
   spec {
     route_name = google_cloud_run_service.webapp.name
   }
+
+  depends_on = [
+    google_cloud_run_service.webapp
+  ]
 }
 
-# --- 7. Azure DNS Record ---
+# -------------------------------
+# 7. Azure DNS CNAME Record
+# -------------------------------
 resource "azurerm_dns_cname_record" "google_cname" {
   name                = var.subdomain
   zone_name           = var.domain_name
@@ -154,6 +187,9 @@ resource "azurerm_dns_cname_record" "google_cname" {
   }
 }
 
+# -------------------------------
+# Outputs
+# -------------------------------
 output "webapp_url" {
   value = google_cloud_run_service.webapp.status[0].url
 }
