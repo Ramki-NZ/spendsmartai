@@ -28,6 +28,8 @@ dist-ssr
 *.tfstate.backup
 crash.log
 *.log
+spendsmartai.env
+
 
 # Terraform CLI data
 .terraform.lock.hcl
