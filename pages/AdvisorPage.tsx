@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useData } from './contexts'; 
+import { useData } from '../App';
 import { getShoppingAdvice } from '../services/geminiService';
 import { Send, Bot, ShoppingCart, Lightbulb, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -46,9 +46,9 @@ const AdvisorPage: React.FC = () => {
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
-               <div className="prose prose-sm max-w-none dark:prose-invert">
-                 <ReactMarkdown>{msg.content}</ReactMarkdown>
-               </div>
+               <ReactMarkdown className="prose prose-sm max-w-none dark:prose-invert">
+                 {msg.content}
+               </ReactMarkdown>
                
                {/* Display Grounding Sources (Links) */}
                {msg.grounding && msg.grounding.length > 0 && (
@@ -81,8 +81,8 @@ const AdvisorPage: React.FC = () => {
           <div className="flex justify-start">
              <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-bl-none flex items-center space-x-2 text-slate-500 dark:text-slate-400">
                 <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce [animation-delay:200ms]"></div>
-                <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce [animation-delay:400ms]"></div>
+                <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s'}}></div>
+                <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s'}}></div>
              </div>
           </div>
         )}
@@ -90,9 +90,7 @@ const AdvisorPage: React.FC = () => {
 
       <div className="p-4 border-t border-slate-100 dark:border-slate-800">
         <form onSubmit={handleSend} className="relative">
-           <label htmlFor="advisor-input" className="sr-only">Ask a question</label>
            <input
-             id="advisor-input"
              type="text"
              className="w-full pl-4 pr-12 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
              placeholder="Ask about prices, budgets, or spending habits..."
@@ -102,7 +100,6 @@ const AdvisorPage: React.FC = () => {
            <button 
              type="submit" 
              disabled={loading || !query.trim()}
-             title="Send message"
              className="absolute right-2 top-2 p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
            >
              <Send size={20} />

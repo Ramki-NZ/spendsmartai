@@ -1,13 +1,14 @@
 import React from 'react';
 import { Transaction, TransactionType } from '../types';
 import { Calendar, Store, Tag, Repeat } from 'lucide-react';
-import { useData } from '../pages/contexts'; // Updated Import
+import { useData } from '../App';
 
 interface Props {
   transaction: Transaction;
+  onClick?: () => void;
 }
 
-const TransactionCard: React.FC<Props> = ({ transaction }) => {
+const TransactionCard: React.FC<Props> = ({ transaction, onClick }) => {
   const { updateTransaction } = useData();
 
   const toggleRecurring = (e: React.MouseEvent) => {
@@ -20,7 +21,10 @@ const TransactionCard: React.FC<Props> = ({ transaction }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+    <div 
+      onClick={onClick}
+      className={`bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all ${onClick ? 'cursor-pointer hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700' : 'hover:shadow-md'}`}
+    >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center space-x-2">
            <div className={`p-2 rounded-full ${transaction.type === TransactionType.EXPENSE ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'}`}>
@@ -62,7 +66,7 @@ const TransactionCard: React.FC<Props> = ({ transaction }) => {
 
       {transaction.items && transaction.items.length > 0 && (
         <div className="mt-3 pt-3 border-t border-slate-50 dark:border-slate-800">
-           <details className="group">
+           <details className="group" onClick={(e) => e.stopPropagation()}>
              <summary className="text-xs text-indigo-600 dark:text-indigo-400 cursor-pointer font-medium hover:text-indigo-800 dark:hover:text-indigo-300">
                View Items
              </summary>
