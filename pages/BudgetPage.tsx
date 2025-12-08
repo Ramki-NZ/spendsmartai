@@ -87,8 +87,9 @@ const BudgetPage: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 mb-6">
           <form onSubmit={handleAddBudget} className="flex gap-4 items-end">
              <div className="flex-1">
-               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category Name</label>
+               <label htmlFor="categoryName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category Name</label>
                <input 
+                 id="categoryName"
                  type="text" 
                  className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white"
                  placeholder="e.g. Groceries"
@@ -97,8 +98,9 @@ const BudgetPage: React.FC = () => {
                />
              </div>
              <div className="w-32">
-               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Monthly Limit ($)</label>
+               <label htmlFor="budgetLimit" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Monthly Limit ($)</label>
                <input 
+                 id="budgetLimit"
                  type="number" 
                  className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white"
                  placeholder="500"
@@ -106,7 +108,7 @@ const BudgetPage: React.FC = () => {
                  onChange={e => setNewLimit(e.target.value)}
                />
              </div>
-             <button type="submit" className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+             <button type="submit" aria-label="Add Budget" className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
                <Plus size={24} />
              </button>
           </form>

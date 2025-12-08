@@ -217,6 +217,7 @@ const Dashboard: React.FC = () => {
                     <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
                     <input 
                         type="text" 
+                        aria-label="Search transactions"
                         placeholder="Search items..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -227,6 +228,7 @@ const Dashboard: React.FC = () => {
                 <div className="relative">
                     <Filter className="absolute left-3 top-2.5 text-slate-400" size={16} />
                     <select 
+                        aria-label="Filter by category"
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
                         className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
@@ -239,6 +241,7 @@ const Dashboard: React.FC = () => {
                 <div className="relative">
                     <ArrowUpDown className="absolute left-3 top-2.5 text-slate-400" size={16} />
                     <select 
+                        aria-label="Sort transactions"
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as any)}
                         className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
