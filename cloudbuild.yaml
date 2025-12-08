@@ -1,0 +1,15 @@
+steps:
+  # Pull the official Docker builder image
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker build \
+          --build-arg GEMINI_API_KEY=$_GEMINI_API_KEY \
+          -t $_IMAGE_URL \
+          .
+
+# Push the image to the registry
+images:
+  - '$_IMAGE_URL'
