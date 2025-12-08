@@ -1,4 +1,4 @@
-# deploy.ps1 (Cloud Build Version - No Local Docker Required)
+# deploy.ps1 (Fixed: Node 20 & Correct Deploy Command)
 $ErrorActionPreference = "Stop"
 
 # --- Configuration ---
@@ -26,18 +26,40 @@ Connect-AzAccount -Tenant $TenantId -ErrorAction SilentlyContinue | Out-Null
 Write-Host ">>> Configuring Google Cloud..." -ForegroundColor Cyan
 gcloud config set project $ProjectId
 
-# --- 3. Build & Push (Using Cloud Build) ---
-Write-Host ">>> submitting Build to Google Cloud..." -ForegroundColor Cyan
+# --- 3. Generate Cloud Build Config ---
 $ImageUrl = "$Region-docker.pkg.dev/$ProjectId/$RepoName/$ImageName`:latest"
+Write-Host ">>> Generating cloudbuild.yaml..." -ForegroundColor Cyan
 
-# usage: gcloud builds submit --config <file> --substitutions <vars>
-gcloud builds submit . `
-  --config cloudbuild.yaml `
-  --substitutions _GEMINI_API_KEY=$env:GEMINI_API_KEY,_IMAGE_URL=$ImageUrl
+$YamlContent = @"
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker build --build-arg GEMINI_API_KEY=`$_GEMINI_API_KEY -t $ImageUrl .
+images:
+  - '$ImageUrl'
+"@
+Set-Content -Path "cloudbuild.yaml" -Value $YamlContent
 
-# --- 4. Deploy Infrastructure ---
+# --- 4. Submit Build ---
+Write-Host ">>> Submitting Build to Google Cloud..." -ForegroundColor Cyan
+gcloud builds submit . --config cloudbuild.yaml --substitutions "_GEMINI_API_KEY=$env:GEMINI_API_KEY"
+
+# --- 5. Infrastructure ---
 Write-Host ">>> Applying Terraform..." -ForegroundColor Cyan
 terraform init
 terraform apply -auto-approve
+
+# --- 6. Force Service Update ---
+Write-Host ">>> Forcing Service to pick up new Image..." -ForegroundColor Cyan
+$ServiceName = "$ProjectId-www-service"
+
+# We explicitly tell Cloud Run to redeploy the 'latest' tag image
+gcloud run services update $ServiceName `
+  --image $ImageUrl `
+  --region $Region `
+  --quiet
 
 Write-Host ">>> Deployment Complete!" -ForegroundColor Green
