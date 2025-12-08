@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Transaction, Item } from '../types';
+import { Transaction, Item, SUGGESTED_CATEGORIES, SUB_CATEGORIES } from '../types';
 import { X, Save, Trash2, Edit2, Calendar, Store, Tag, DollarSign, Plus, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -8,12 +8,6 @@ interface Props {
   onSave: (updated: Transaction) => void;
   onDelete: (id: string) => void;
 }
-
-const SUGGESTED_CATEGORIES = [
-  "Groceries", "Dining", "Transport", "Utilities", "Shopping", 
-  "Entertainment", "Health", "Housing", "Education", 
-  "Personal Care", "Travel", "Subscriptions", "Other"
-];
 
 const TransactionModal: React.FC<Props> = ({ transaction, onClose, onSave, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -164,51 +158,64 @@ const TransactionModal: React.FC<Props> = ({ transaction, onClose, onSave, onDel
                          </button>
                     </div>
                     <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                        {formData.items?.map((item, i) => (
-                            <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                                <div className="flex justify-between gap-2">
-                                     <input 
-                                        type="text" 
-                                        value={item.name}
-                                        onChange={(e) => updateItem(i, 'name', e.target.value)}
-                                        className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs"
-                                        placeholder="Item Name"
-                                     />
-                                     <button type="button" onClick={() => removeItem(i)} className="text-slate-400 hover:text-red-500">
-                                         <X size={14} />
-                                     </button>
-                                </div>
-                                <div className="flex gap-2">
-                                     <div className="w-16">
+                        {formData.items?.map((item, i) => {
+                            const currentCategory = item.category || formData.category || "Other";
+                            const subCats = SUB_CATEGORIES[currentCategory] || SUB_CATEGORIES["Other"];
+
+                            return (
+                                <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+                                    <div className="flex justify-between gap-2">
                                         <input 
-                                            type="number" 
-                                            value={item.quantity}
-                                            onChange={(e) => updateItem(i, 'quantity', parseFloat(e.target.value))}
-                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-right"
-                                            placeholder="Qty"
+                                            type="text" 
+                                            value={item.name}
+                                            onChange={(e) => updateItem(i, 'name', e.target.value)}
+                                            className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs"
+                                            placeholder="Item Name"
                                         />
-                                     </div>
-                                     <div className="w-20">
-                                        <input 
-                                            type="number" 
-                                            value={item.unitPrice}
-                                            onChange={(e) => updateItem(i, 'unitPrice', parseFloat(e.target.value))}
-                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-right"
-                                            placeholder="Price"
-                                        />
-                                     </div>
-                                     <div className="flex-1">
-                                         <select
+                                        <button type="button" onClick={() => removeItem(i)} className="text-slate-400 hover:text-red-500">
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="w-16">
+                                            <input 
+                                                type="number" 
+                                                value={item.quantity}
+                                                onChange={(e) => updateItem(i, 'quantity', parseFloat(e.target.value))}
+                                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-right"
+                                                placeholder="Qty"
+                                            />
+                                        </div>
+                                        <div className="w-20">
+                                            <input 
+                                                type="number" 
+                                                value={item.unitPrice}
+                                                onChange={(e) => updateItem(i, 'unitPrice', parseFloat(e.target.value))}
+                                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-right"
+                                                placeholder="Price"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <select
                                             value={item.category || formData.category || "Other"}
                                             onChange={(e) => updateItem(i, 'category', e.target.value)}
                                             className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs"
-                                         >
-                                             {SUGGESTED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                         </select>
-                                     </div>
+                                        >
+                                            {SUGGESTED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                        <select
+                                            value={item.subCategory || ""}
+                                            onChange={(e) => updateItem(i, 'subCategory', e.target.value)}
+                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs"
+                                        >
+                                            <option value="" disabled>Sub-Cat</option>
+                                            {subCats.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                </div>
             </div>
@@ -253,7 +260,12 @@ const TransactionModal: React.FC<Props> = ({ transaction, onClose, onSave, onDel
                                         <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                             <td className="px-4 py-2 text-slate-700 dark:text-slate-300">
                                                 <div className="font-medium">{item.name}</div>
-                                                <div className="text-[10px] text-slate-400">{item.category}</div>
+                                                <div className="flex gap-1">
+                                                    <span className="text-[10px] text-slate-400">{item.category}</span>
+                                                    {item.subCategory && (
+                                                        <span className="text-[10px] text-slate-400">/ {item.subCategory}</span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-2 text-right text-slate-500 dark:text-slate-400">{item.quantity}</td>
                                             <td className="px-4 py-2 text-right text-slate-900 dark:text-slate-200">${item.totalPrice.toFixed(2)}</td>

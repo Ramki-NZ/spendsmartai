@@ -2,16 +2,10 @@ import React, { useState } from 'react';
 import { Upload, Loader2, AlertCircle, Check, Trash2, Search, Plus, MapPin, X, Edit2, ShoppingBag } from 'lucide-react';
 import { parseReceiptOrStatement } from '../services/geminiService';
 import { useData } from '../App';
-import { Transaction, TransactionType, Item } from '../types';
+import { Transaction, TransactionType, Item, SUGGESTED_CATEGORIES, SUB_CATEGORIES } from '../types';
 
 // Simple UUID fallback
 const generateId = () => Math.random().toString(36).substring(2, 9);
-
-const SUGGESTED_CATEGORIES = [
-  "Groceries", "Dining", "Transport", "Utilities", "Shopping", 
-  "Entertainment", "Health", "Housing", "Education", 
-  "Personal Care", "Travel", "Subscriptions", "Other"
-];
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "Groceries": ["grocery", "market", "food", "supermarket", "mart", "produce", "fruit", "vegetable", "meat", "milk", "egg", "bread", "bakery", "kroger", "walmart", "whole foods", "trader joe", "safeway", "publix", "aldi", "lidl", "wegmans", "tesco", "sainsbury"],
@@ -364,45 +358,51 @@ const ScanPage: React.FC = () => {
                         </button>
                     </div>
                     
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                      {t.items.map((item, i) => (
-                        <div key={i} className="flex flex-col gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700/50 shadow-sm group/item">
-                            <div className="flex gap-2">
-                                <input 
-                                    type="text"
-                                    value={item.name}
-                                    onChange={(e) => updateItem(t.id, i, 'name', e.target.value)}
-                                    className="flex-1 min-w-0 p-1 bg-transparent border-b border-dashed border-slate-300 dark:border-slate-600 text-xs text-slate-800 dark:text-slate-200 focus:border-indigo-500 outline-none"
-                                    placeholder="Item name"
-                                />
-                                <button 
-                                    onClick={() => removeItem(t.id, i)}
-                                    className="text-slate-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center w-16">
-                                    <span className="text-[10px] text-slate-400 mr-1">Qty</span>
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+                      {t.items.map((item, i) => {
+                          const currentCategory = item.category || t.category || "Other";
+                          const subCats = SUB_CATEGORIES[currentCategory] || SUB_CATEGORIES["Other"];
+                          
+                          return (
+                            <div key={i} className="flex flex-col gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700/50 shadow-sm group/item">
+                                <div className="flex gap-2">
                                     <input 
-                                        type="number"
-                                        value={item.quantity}
-                                        onChange={(e) => updateItem(t.id, i, 'quantity', parseFloat(e.target.value))}
-                                        className="w-full p-1 bg-transparent border-b border-dashed border-slate-300 dark:border-slate-600 text-xs text-right text-slate-600 dark:text-slate-400 focus:border-indigo-500 outline-none"
+                                        type="text"
+                                        value={item.name}
+                                        onChange={(e) => updateItem(t.id, i, 'name', e.target.value)}
+                                        className="flex-1 min-w-0 p-1 bg-transparent border-b border-dashed border-slate-300 dark:border-slate-600 text-xs text-slate-800 dark:text-slate-200 focus:border-indigo-500 outline-none"
+                                        placeholder="Item name"
                                     />
+                                    <button 
+                                        onClick={() => removeItem(t.id, i)}
+                                        className="text-slate-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                    >
+                                        <X size={14} />
+                                    </button>
                                 </div>
-                                <div className="flex items-center w-20">
-                                    <span className="text-[10px] text-slate-400 mr-1">Price</span>
-                                    <input 
-                                        type="number"
-                                        value={item.unitPrice}
-                                        onChange={(e) => updateItem(t.id, i, 'unitPrice', parseFloat(e.target.value))}
-                                        className="w-full p-1 bg-transparent border-b border-dashed border-slate-300 dark:border-slate-600 text-xs text-right text-slate-600 dark:text-slate-400 focus:border-indigo-500 outline-none"
-                                    />
+                                
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center w-16">
+                                        <span className="text-[10px] text-slate-400 mr-1">Qty</span>
+                                        <input 
+                                            type="number"
+                                            value={item.quantity}
+                                            onChange={(e) => updateItem(t.id, i, 'quantity', parseFloat(e.target.value))}
+                                            className="w-full p-1 bg-transparent border-b border-dashed border-slate-300 dark:border-slate-600 text-xs text-right text-slate-600 dark:text-slate-400 focus:border-indigo-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex items-center w-20">
+                                        <span className="text-[10px] text-slate-400 mr-1">Price</span>
+                                        <input 
+                                            type="number"
+                                            value={item.unitPrice}
+                                            onChange={(e) => updateItem(t.id, i, 'unitPrice', parseFloat(e.target.value))}
+                                            className="w-full p-1 bg-transparent border-b border-dashed border-slate-300 dark:border-slate-600 text-xs text-right text-slate-600 dark:text-slate-400 focus:border-indigo-500 outline-none"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-[100px]">
+                                
+                                <div className="grid grid-cols-2 gap-2">
                                     <select 
                                         value={item.category || t.category || "Other"}
                                         onChange={(e) => updateItem(t.id, i, 'category', e.target.value)}
@@ -410,23 +410,32 @@ const ScanPage: React.FC = () => {
                                     >
                                         {SUGGESTED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
+
+                                    <select 
+                                        value={item.subCategory || ""}
+                                        onChange={(e) => updateItem(t.id, i, 'subCategory', e.target.value)}
+                                        className="w-full p-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-medium text-slate-700 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 outline-none cursor-pointer hover:border-indigo-300 focus:border-indigo-500 transition-colors"
+                                    >
+                                        <option value="" disabled>Sub-Category</option>
+                                        {subCats.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-1 border-t border-slate-50 dark:border-slate-800 mt-1">
+                                    <button
+                                        onClick={() => handleCheckPrice(item.name)}
+                                        className="flex items-center gap-1 text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline"
+                                        title="Search local & online prices"
+                                    >
+                                        <MapPin size={10} /> Check Price
+                                    </button>
+                                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                        ${(item.totalPrice || 0).toFixed(2)}
+                                    </span>
                                 </div>
                             </div>
-
-                            <div className="flex justify-between items-center pt-1 border-t border-slate-50 dark:border-slate-800 mt-1">
-                                <button
-                                    onClick={() => handleCheckPrice(item.name)}
-                                    className="flex items-center gap-1 text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline"
-                                    title="Search local & online prices"
-                                >
-                                    <MapPin size={10} /> Check Price
-                                </button>
-                                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                                    ${(item.totalPrice || 0).toFixed(2)}
-                                </span>
-                            </div>
-                        </div>
-                      ))}
+                          );
+                      })}
                       {t.items.length === 0 && (
                           <p className="text-center text-xs text-slate-400 py-2">No items detected. Add one manually.</p>
                       )}
