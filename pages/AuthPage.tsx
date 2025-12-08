@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../App';
+import { useAuth } from './contexts'; // Updated Import
 import { Wallet } from 'lucide-react';
 
 const AuthPage: React.FC = () => {

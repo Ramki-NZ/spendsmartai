@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, Camera, FileText, Check, Loader2, AlertCircle, Save, Trash2, Edit2, Plus, Search, ExternalLink } from 'lucide-react';
+import { Upload, Camera, FileText, Check, Loader2, AlertCircle, Save, Trash2, Edit2, Plus, Search } from 'lucide-react';
 import { parseReceiptOrStatement } from '../services/geminiService';
-import { useData } from '../App';
+import { useData } from './contexts';
 import { Transaction, TransactionType } from '../types';
 
 // Simple UUID fallback
@@ -141,8 +141,9 @@ const ScanPage: React.FC = () => {
             <div key={t.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Store / Merchant</label>
+                    <label htmlFor={`store-${t.id}`} className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Store / Merchant</label>
                     <input 
+                      id={`store-${t.id}`}
                       type="text" 
                       value={t.store}
                       onChange={(e) => updateScannedTransaction(t.id, 'store', e.target.value)}
@@ -150,8 +151,9 @@ const ScanPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Date</label>
+                    <label htmlFor={`date-${t.id}`} className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Date</label>
                     <input 
+                      id={`date-${t.id}`}
                       type="date" 
                       value={t.date}
                       onChange={(e) => updateScannedTransaction(t.id, 'date', e.target.value)}
@@ -159,8 +161,9 @@ const ScanPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Total Amount ($)</label>
+                    <label htmlFor={`amount-${t.id}`} className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Total Amount ($)</label>
                     <input 
+                      id={`amount-${t.id}`}
                       type="number" 
                       value={t.totalAmount}
                       onChange={(e) => updateScannedTransaction(t.id, 'totalAmount', parseFloat(e.target.value))}
@@ -168,8 +171,9 @@ const ScanPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Category</label>
+                    <label htmlFor={`cat-${t.id}`} className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Category</label>
                     <select 
+                      id={`cat-${t.id}`}
                       value={t.category}
                       onChange={(e) => updateScannedTransaction(t.id, 'category', e.target.value)}
                       className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
@@ -250,7 +254,9 @@ const ScanPage: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-10 text-center hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors group relative overflow-hidden">
+        <label htmlFor="file-upload" className="sr-only">Upload Receipt</label>
         <input 
+          id="file-upload"
           type="file" 
           accept="image/*,.pdf"
           onChange={handleFileUpload}
