@@ -19,11 +19,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
 
-    /* Paths */
-    "baseUrl": ".",
+    /* Paths (baseUrl is removed as it's deprecated) */
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"]
     },
     
     /* Types */
