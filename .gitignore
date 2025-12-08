@@ -22,14 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-# Terraform local state & cache
-.terraform/
-*.tfstate
-*.tfstate.backup
-crash.log
-*.log
-spendsmartai.env
-
-
-# Terraform CLI data
-.terraform.lock.hcl

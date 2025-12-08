@@ -1,156 +1,138 @@
-// services/geminiService.ts
+import { GoogleGenAI, Type } from "@google/genai";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+const apiKey = process.env.API_KEY || '';
+const ai = new GoogleGenAI({ apiKey });
 
-// NOTE: In Vite, we inject this via vite.config.ts define:
-// 'process.env.API_KEY' / 'process.env.GEMINI_API_KEY'
-const apiKey =
-  (process.env.API_KEY as string | undefined) ||
-  (process.env.GEMINI_API_KEY as string | undefined) ||
-  "";
+// Helper to encode file to base64
+export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Data = reader.result as string;
+      // Remove data url prefix (e.g. "data:image/jpeg;base64,")
+      const base64Content = base64Data.split(',')[1];
+      resolve({
+        inlineData: {
+          data: base64Content,
+          mimeType: file.type,
+        },
+      });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
-if (!apiKey) {
-  console.warn(
-    "GEMINI API key is not set. Make sure GEMINI_API_KEY (or API_KEY) is defined in your env and wired via vite.config.ts."
-  );
-}
-
-const ai = new GoogleGenerativeAI(apiKey);
-
-/**
- * Convert a browser File into a Gemini inlineData part.
- * We keep the shape { inlineData: { data, mimeType } } which the SDK understands.
- */
-export const fileToGenerativePart = (file: File) =>
-  new Promise<{ inlineData: { data: string; mimeType: string } }>(
-    (resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        const base64Content = result.split(",")[1]; // strip "data:...;base64,"
-        resolve({
-          inlineData: {
-            data: base64Content,
-            mimeType: file.type,
-          },
-        });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    }
-  );
-
-/**
- * Parse a receipt or bank statement image/PDF into structured transactions.
- * We *ask* Gemini to return JSON, then JSON.parse it ourselves.
- * (No responseSchema / Type enum – keeps things simple & compatible.)
- */
 export const parseReceiptOrStatement = async (file: File) => {
   try {
     const filePart = await fileToGenerativePart(file);
 
-    const model = ai.getGenerativeModel({
-      model: "gemini-1.5-flash", // you can switch to gemini-2.0-flash if your key supports it
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          filePart,
+          {
+            text: `Analyze this document (receipt or bank statement) and extract transaction data.
+
+            **CRITICAL OCR & PARSING INSTRUCTIONS:**
+            1.  **Complex Layouts & Multi-line Items:** If an item description spans multiple lines, combine them into a single name string. Do not treat the second line as a separate item with 0 price. Ensure the price aligns with the correct item row.
+            2.  **Handwriting & Low Quality:** Pay close attention to handwritten text, especially for totals or tips. Use context (sum of items) to infer unclear numbers.
+            3.  **Category Inference:** 
+                - Determine the *Main Transaction Category* based on the merchant.
+                - Determine a *Specific Category* for EACH individual item. **IMPORTANT:** This must be one of the standard categories list (e.g. if the item is an Apple, use "Groceries", if it is a T-Shirt, use "Shopping").
+            4.  **Accuracy Check:** Verify that individual item prices roughly sum up to the total. Prefer the explicitly labeled "Total" or "Grand Total".
+            5.  **Date Handling:** Convert dates strictly to ISO 8601 (YYYY-MM-DD). If year is missing, assume current year.
+
+            **Extract the following structured data:**
+            - **Store:** Merchant name.
+            - **Date:** Transaction date (YYYY-MM-DD).
+            - **Total Amount:** Final amount paid.
+            - **Category:** Main category from: [Groceries, Dining, Transport, Utilities, Shopping, Entertainment, Health, Housing, Education, Personal Care, Travel, Subscriptions, Other].
+            - **Items:** List of line items with:
+                - Name
+                - Quantity (number, default 1)
+                - Unit Price (number)
+                - Total Price (number)
+                - Category (Item-specific category from the main list above)
+            - **Is Recurring:** Set to true if it looks like a subscription, rent, insurance, or utility bill.
+
+            Return ONLY a JSON array of objects.`
+          }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              store: { type: Type.STRING },
+              date: { type: Type.STRING },
+              totalAmount: { type: Type.NUMBER },
+              category: { type: Type.STRING },
+              isRecurring: { type: Type.BOOLEAN },
+              items: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    quantity: { type: Type.NUMBER },
+                    unitPrice: { type: Type.NUMBER },
+                    totalPrice: { type: Type.NUMBER },
+                    category: { type: Type.STRING }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
 
-    const instructions = `
-Analyze this document (receipt or bank statement) and extract transaction data.
-
-CRITICAL OCR & PARSING INSTRUCTIONS:
-1. Handwriting & Low Quality: Pay close attention to handwritten text, especially for totals or tips. If text is blurry or faded, use context (e.g., sum of items + tax) to infer the correct Total Amount.
-2. Multiple Receipts: If the image contains multiple distinct receipts (e.g., side-by-side), split them into separate transaction objects.
-3. Accuracy Check: Verify that individual item prices roughly sum up to the total. Prefer the explicitly labeled "Total" or "Grand Total" over subtotals.
-4. Date Handling: Look for dates in various formats (MM/DD/YY, DD-Mon-YYYY). Convert strictly to ISO 8601 (YYYY-MM-DD). If year is missing, assume the current year.
-
-Extract the following structured data:
-- store: Merchant name (string).
-- date: Transaction date (YYYY-MM-DD).
-- totalAmount: Final amount paid (number).
-- category: Best fit from: [Groceries, Dining, Transport, Utilities, Shopping, Entertainment, Health, Housing, Education, Personal Care, Travel, Subscriptions, Other].
-- isRecurring: true if it looks like a subscription, rent, insurance, or utility bill; otherwise false.
-- items: Array of line items with:
-  - name (string)
-  - quantity (number, default 1 if unspecified)
-  - unitPrice (number)
-  - totalPrice (number)
-
-Return ONLY a JSON array of objects with this structure. No extra commentary, no markdown, no explanation – just pure JSON.
-`.trim();
-
-    const result = await model.generateContent([
-      filePart,
-      { text: instructions },
-    ]);
-
-    const text = result.response.text();
-
-    if (!text) {
-      console.error("Gemini returned an empty response for OCR.");
-      return [];
-    }
-
-    try {
-      const parsed = JSON.parse(text);
-      // Ensure we always return an array
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch (err) {
-      console.error("Failed to parse JSON from Gemini:", text, err);
-      throw err;
-    }
+    return JSON.parse(response.text || '[]');
   } catch (error) {
     console.error("Gemini OCR Error:", error);
     throw error;
   }
 };
 
-/**
- * Get shopping/budgeting advice from Gemini based on recent transactions + a user query.
- * We just generate plain text advice (optionally markdown) for display in the UI.
- */
 export const getShoppingAdvice = async (transactions: any[], query: string) => {
   try {
-    // keep payload reasonable
-    const recentTransactions = transactions.slice(0, 50).map((t) => ({
-      store: t.store,
-      amount: t.totalAmount,
-      date: t.date,
-      items: t.items?.map((i: any) => i.name).join(", "),
-      category: t.category,
-      isRecurring: t.isRecurring,
+    // We only send a summary to avoid token limits if history is huge
+    const recentTransactions = transactions.slice(0, 50).map(t => ({
+        store: t.store,
+        amount: t.totalAmount,
+        date: t.date,
+        items: t.items?.map((i: any) => i.name).join(', ')
     }));
 
-    const model = ai.getGenerativeModel({
-      model: "gemini-1.5-flash",
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          {
+            text: `You are SpendSmartAI, a financial advisor. 
+            Here is a summary of the user's recent transactions: ${JSON.stringify(recentTransactions)}.
+            
+            User Query: "${query}"
+            
+            If the user asks for price comparisons, look at the items they bought and use Google Search to find better deals.
+            If the user asks for budgeting advice, analyze their spending habits.
+            Provide actionable, specific advice.`
+          }
+        ]
+      },
+      config: {
+        tools: [{ googleSearch: {} }]
+      }
     });
 
-    const prompt = `
-You are SpendSmartAI, a friendly but direct personal finance coach.
-
-Here is a summary of the user's recent transactions as JSON:
-${JSON.stringify(recentTransactions, null, 2)}
-
-User query:
-"${query}"
-
-Tasks:
-1. Analyse their spending patterns (e.g., overspending categories, recurring bills, obvious savings).
-2. Answer the user's query specifically.
-3. Give concrete, actionable suggestions (e.g., "Set a weekly grocery cap of $X", "Cancel subscription Y", "Switch to a cheaper provider").
-4. If relevant, mention rough percentage splits between key categories (Groceries, Housing, Transport, etc.).
-
-Format your response in clear markdown with:
-- short paragraphs
-- bullet points
-- section headings like "Overview", "Key Issues", "Recommendations".
-`.trim();
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-
     return {
-      text: text ?? "",
-      // we are not using search tools / grounding here, so keep this null for now
-      grounding: null as unknown as any,
+        text: response.text,
+        grounding: response.candidates?.[0]?.groundingMetadata?.groundingChunks
     };
   } catch (error) {
     console.error("Gemini Advice Error:", error);

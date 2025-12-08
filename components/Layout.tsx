@@ -1,6 +1,6 @@
 import React from 'react';
 import { Home, ScanLine, PieChart, Sparkles, LogOut, Menu, X, Sun, Moon } from 'lucide-react';
-import { useAuth, useTheme } from '../pages/contexts'; // Updated Import
+import { useAuth, useTheme } from '../App';
 import { Link, useLocation } from 'react-router-dom';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
