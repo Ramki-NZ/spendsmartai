@@ -1,5 +1,5 @@
 import React from 'react';
-import { useData } from '../contexts'; 
+import { useData } from './contexts'; 
 import TransactionCard from '../components/TransactionCard';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { TrendingDown, TrendingUp, CreditCard, PieChart as PieChartIcon } from 'lucide-react';

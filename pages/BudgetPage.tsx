@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useData } from '../contexts';
+import { useData } from './contexts';
 import { Budget, Transaction } from '../types';
 import { Plus, CheckCircle, AlertTriangle, Repeat, Calendar, DollarSign, ShoppingBag } from 'lucide-react';
 
@@ -41,7 +41,10 @@ const BudgetPage: React.FC = () => {
         return groups;
     }, {} as Record<string, Transaction>);
 
-  const recurringList = Object.values(recurringGroups).sort((a: Transaction, b: Transaction) => b.totalAmount - a.totalAmount);
+  // FIX: Explicitly cast Object.values to Transaction[] to resolve strict type errors
+  const recurringList = (Object.values(recurringGroups) as Transaction[])
+    .sort((a: Transaction, b: Transaction) => b.totalAmount - a.totalAmount);
+    
   const totalRecurringMonthly = recurringList.reduce((sum: number, t: Transaction) => sum + t.totalAmount, 0);
 
   // Calculate item breakdown grouped by category
