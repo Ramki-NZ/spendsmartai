@@ -1,0 +1,12 @@
+runtime: nodejs20
+
+handlers:
+  # Serve all static files from the build output directory
+  - url: /assets
+    static_dir: dist/assets
+
+  # Rewrite all other URLs to index.html to support React Router (Single Page App)
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always
