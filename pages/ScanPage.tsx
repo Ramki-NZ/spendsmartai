@@ -13,11 +13,7 @@ const SUGGESTED_CATEGORIES = [
   "Personal Care", "Travel", "Subscriptions", "Other"
 ];
 
-// Helper to infer category based on keywords in store name or items
-const inferCategory = (store: string, items: any[]): string => {
-  const textToCheck = `${store} ${items?.map((i: any) => i.name).join(' ')}`.toLowerCase();
-
-  const keywords: Record<string, string[]> = {
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "Groceries": ["grocery", "market", "food", "supermarket", "mart", "produce", "fruit", "vegetable", "meat", "milk", "egg", "bread", "bakery", "kroger", "walmart", "whole foods", "trader joe", "safeway", "publix", "aldi", "lidl", "wegmans", "tesco", "sainsbury"],
     "Dining": ["restaurant", "cafe", "coffee", "starbucks", "diner", "bistro", "grill", "bar", "pizza", "burger", "mcdonald", "kfc", "taco", "chipotle", "subway", "eatery", "kitchen", "steakhouse", "baker", "dunkin", "domino", "wendy", "doordash", "ubereats"],
     "Transport": ["fuel", "gas", "petrol", "shell", "bp", "chevron", "exxon", "uber", "lyft", "taxi", "train", "bus", "metro", "transit", "airline", "flight", "parking", "automotive", "car wash", "ticket", "transport", "station"],
@@ -30,13 +26,27 @@ const inferCategory = (store: string, items: any[]): string => {
     "Personal Care": ["hair", "salon", "barber", "spa", "nail", "beauty", "cosmetic", "lotion", "shampoo", "soap", "grooming", "cut"],
     "Travel": ["hotel", "motel", "airbnb", "resort", "booking", "expedia", "trip", "vacation", "luggage", "tour"],
     "Subscriptions": ["subscription", "sub", "monthly", "yearly", "renewal", "membership", "prime", "premium"]
-  };
+};
 
-  for (const [category, terms] of Object.entries(keywords)) {
-    if (terms.some(term => textToCheck.includes(term))) {
-      return category;
-    }
+// Helper to check specific text against keywords
+const getCategoryFromKeywords = (text: string): string | null => {
+  const lower = text.toLowerCase();
+  for (const [cat, terms] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (terms.some(t => lower.includes(t))) return cat;
   }
+  return null;
+}
+
+// Helper to infer category based on keywords in store name or items
+const inferCategory = (store: string, items: any[]): string => {
+  // Check store name first
+  let cat = getCategoryFromKeywords(store);
+  if (cat) return cat;
+
+  // Check items collectively
+  const textToCheck = items?.map((i: any) => i.name).join(' ') || "";
+  cat = getCategoryFromKeywords(textToCheck);
+  if (cat) return cat;
 
   return "Other";
 };
@@ -69,12 +79,18 @@ const ScanPage: React.FC = () => {
            category = inferCategory(item.store || "", item.items || []);
         }
 
-        // Process Items to ensure categories are valid
-        const processedItems = (item.items || []).map((i: any) => ({
-            ...i,
-            // Fallback to transaction category or 'Other' if specific item category is not standard
-            category: SUGGESTED_CATEGORIES.includes(i.category) ? i.category : (category || "Other")
-        }));
+        // Process Items to ensure categories are valid and granular
+        const processedItems = (item.items || []).map((i: any) => {
+            // Priority: 1. AI provided valid category, 2. Keywords in item name, 3. Transaction category, 4. Other
+            let itemCat = i.category;
+            if (!SUGGESTED_CATEGORIES.includes(itemCat)) {
+                itemCat = getCategoryFromKeywords(i.name) || category || "Other";
+            }
+            return {
+                ...i,
+                category: itemCat
+            };
+        });
 
         return {
           id: generateId(),
