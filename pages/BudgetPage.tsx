@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { useData } from '../App';
+import { useData } from '../contexts';
 import { Budget, Transaction } from '../types';
-import { Plus, Trash2, AlertTriangle, CheckCircle, Repeat, Calendar, DollarSign, ShoppingBag } from 'lucide-react';
+import { Plus, CheckCircle, AlertTriangle, Repeat, Calendar, DollarSign, ShoppingBag } from 'lucide-react';
 
 const BudgetPage: React.FC = () => {
   const { budgets, transactions, addBudget, updateBudget } = useData();
@@ -13,7 +13,7 @@ const BudgetPage: React.FC = () => {
     if (!newCategory || !newLimit) return;
     
     // Check if exists
-    const existing = budgets.find(b => b.category.toLowerCase() === newCategory.toLowerCase());
+    const existing = budgets.find((b: Budget) => b.category.toLowerCase() === newCategory.toLowerCase());
     if (existing) {
         updateBudget({ ...existing, limit: parseFloat(newLimit) });
     } else {
@@ -25,14 +25,14 @@ const BudgetPage: React.FC = () => {
 
   const getSpentForCategory = (cat: string) => {
     return transactions
-      .filter(t => t.category.toLowerCase() === cat.toLowerCase() && t.type === 'EXPENSE')
-      .reduce((sum, t) => sum + t.totalAmount, 0);
+      .filter((t: Transaction) => t.category.toLowerCase() === cat.toLowerCase() && t.type === 'EXPENSE')
+      .reduce((sum: number, t: Transaction) => sum + t.totalAmount, 0);
   };
 
   // Group recurring transactions to estimate monthly costs
   const recurringGroups = transactions
-    .filter(t => t.isRecurring)
-    .reduce((groups, t) => {
+    .filter((t: Transaction) => t.isRecurring)
+    .reduce((groups: Record<string, Transaction>, t: Transaction) => {
         // Group by normalized store name to find the latest occurrence
         const key = t.store.toLowerCase().trim();
         if (!groups[key] || new Date(t.date) > new Date(groups[key].date)) {
@@ -41,16 +41,16 @@ const BudgetPage: React.FC = () => {
         return groups;
     }, {} as Record<string, Transaction>);
 
-  const recurringList = Object.values(recurringGroups).sort((a, b) => b.totalAmount - a.totalAmount);
-  const totalRecurringMonthly = recurringList.reduce((sum, t) => sum + t.totalAmount, 0);
+  const recurringList = Object.values(recurringGroups).sort((a: Transaction, b: Transaction) => b.totalAmount - a.totalAmount);
+  const totalRecurringMonthly = recurringList.reduce((sum: number, t: Transaction) => sum + t.totalAmount, 0);
 
   // Calculate item breakdown grouped by category
   const itemBreakdown = useMemo(() => {
     const breakdown: Record<string, Record<string, { quantity: number; total: number }>> = {};
 
-    transactions.forEach(t => {
+    transactions.forEach((t: Transaction) => {
       if (t.type === 'EXPENSE' && t.items && t.items.length > 0) {
-        t.items.forEach(item => {
+        t.items.forEach((item: any) => {
            // Use item category if available, otherwise transaction category, fallback to 'Other'
            const category = item.category || t.category || 'Other';
            const name = item.name.trim();
@@ -87,8 +87,9 @@ const BudgetPage: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 mb-6">
           <form onSubmit={handleAddBudget} className="flex gap-4 items-end">
              <div className="flex-1">
-               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category Name</label>
+               <label htmlFor="budget-category" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category Name</label>
                <input 
+                 id="budget-category"
                  type="text" 
                  className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white"
                  placeholder="e.g. Groceries"
@@ -97,8 +98,9 @@ const BudgetPage: React.FC = () => {
                />
              </div>
              <div className="w-32">
-               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Monthly Limit ($)</label>
+               <label htmlFor="budget-limit" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Monthly Limit ($)</label>
                <input 
+                 id="budget-limit"
                  type="number" 
                  className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white"
                  placeholder="500"
@@ -106,14 +108,14 @@ const BudgetPage: React.FC = () => {
                  onChange={e => setNewLimit(e.target.value)}
                />
              </div>
-             <button type="submit" className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+             <button type="submit" aria-label="Add Budget" className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
                <Plus size={24} />
              </button>
           </form>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           {budgets.map((budget, idx) => {
+           {budgets.map((budget: Budget, idx: number) => {
              const spent = getSpentForCategory(budget.category);
              const percentage = Math.min((spent / budget.limit) * 100, 100);
              
@@ -161,6 +163,7 @@ const BudgetPage: React.FC = () => {
 
            {budgets.length === 0 && (
              <div className="col-span-full bg-slate-50 dark:bg-slate-900 rounded-xl p-8 text-center border border-dashed border-slate-300 dark:border-slate-700">
+               <ShoppingBag size={48} className="mx-auto mb-3 opacity-20" />
                <p className="text-slate-500 dark:text-slate-400">No budgets set yet. Add a category above to start tracking.</p>
              </div>
            )}
@@ -186,7 +189,7 @@ const BudgetPage: React.FC = () => {
          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             {recurringList.length > 0 ? (
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {recurringList.map((t) => (
+                    {recurringList.map((t: Transaction) => (
                         <div key={t.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             <div className="flex items-center space-x-4">
                                 <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">

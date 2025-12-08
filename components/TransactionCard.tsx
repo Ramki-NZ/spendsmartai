@@ -1,7 +1,7 @@
 import React from 'react';
 import { Transaction, TransactionType } from '../types';
 import { Calendar, Store, Tag, Repeat } from 'lucide-react';
-import { useData } from '../App';
+import { useData } from '../pages/contexts'; // Updated Import
 
 interface Props {
   transaction: Transaction;

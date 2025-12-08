@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, createContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import AuthPage from './pages/AuthPage';
@@ -6,16 +6,8 @@ import Dashboard from './pages/Dashboard';
 import ScanPage from './pages/ScanPage';
 import BudgetPage from './pages/BudgetPage';
 import AdvisorPage from './pages/AdvisorPage';
-import { User, Transaction, Budget, AuthContextType, DataContextType, ThemeContextType } from './types';
-
-// --- Contexts ---
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
-const DataContext = createContext<DataContextType>({} as DataContextType);
-const ThemeContext = createContext<ThemeContextType>({} as ThemeContextType);
-
-export const useAuth = () => useContext(AuthContext);
-export const useData = () => useContext(DataContext);
-export const useTheme = () => useContext(ThemeContext);
+import { User, Transaction, Budget } from './types';
+import { AuthContext, DataContext, ThemeContext } from './pages/contexts';
 
 const App: React.FC = () => {
   // --- Auth State ---

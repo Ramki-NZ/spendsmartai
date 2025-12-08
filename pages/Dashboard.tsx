@@ -1,8 +1,8 @@
 import React from 'react';
-import { useData } from '../App';
+import { useData } from '../contexts'; 
 import TransactionCard from '../components/TransactionCard';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { TrendingDown, TrendingUp, CreditCard } from 'lucide-react';
+import { TrendingDown, TrendingUp, CreditCard, PieChart as PieChartIcon } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { transactions, getSpendingByCategory } = useData();
@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
                     dataKey="value"
                     stroke="none"
                   >
-                    {categoryData.map((entry, index) => (
+                    {categoryData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -91,7 +91,7 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
              <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-600">
-               <PieChart size={48} className="mb-2 opacity-20"/>
+               <PieChartIcon size={48} className="mb-2 opacity-20"/>
                <p>No spending data yet</p>
              </div>
           )}
