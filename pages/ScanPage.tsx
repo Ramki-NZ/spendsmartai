@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Camera, FileText, Check, Loader2, AlertCircle, Save, Trash2, Edit2, Plus, Search } from 'lucide-react';
+import { Upload, FileText, Check, Loader2, AlertCircle, Trash2, Plus, Search } from 'lucide-react';
 import { parseReceiptOrStatement } from '../services/geminiService';
 import { useData } from './contexts';
 import { Transaction, TransactionType } from '../types';
