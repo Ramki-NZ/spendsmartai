@@ -11,17 +11,16 @@ terraform {
   }
 }
 
-# -------------------------------
-# Variables
-# -------------------------------
+# --- Variables ---
 variable "gcp_project_id" {
   description = "Your Google Cloud Project ID"
   default     = "aisave4u"
 }
 
 variable "gcp_region" {
-  description = "Region for Cloud Run"
-  default     = "australia-southeast1"
+  description = "Region for Cloud Run (must support domain mappings)"
+  # NOTE: australia-southeast1 does NOT allow domain mappings; asia-southeast1 does.
+  default     = "asia-southeast1"
 }
 
 variable "azure_resource_group" {
@@ -39,9 +38,14 @@ variable "subdomain" {
   default     = "www"
 }
 
-# -------------------------------
-# Providers
-# -------------------------------
+# Who is allowed to invoke Cloud Run.
+# NOTE: 'allUsers' is blocked by org policy; so we scope it to you for now.
+variable "cloud_run_invoker_member" {
+  description = "IAM member that can invoke the Cloud Run service"
+  default     = "allUsers"
+}
+
+# --- Providers ---
 provider "google" {
   project = var.gcp_project_id
   region  = var.gcp_region
@@ -51,9 +55,7 @@ provider "azurerm" {
   features {}
 }
 
-# -------------------------------
-# 1. Enable Required Google APIs
-# -------------------------------
+# --- 1. Enable Required Google APIs ---
 resource "google_project_service" "run_api" {
   service            = "run.googleapis.com"
   disable_on_destroy = false
@@ -69,9 +71,7 @@ resource "google_project_service" "cloudbuild_api" {
   disable_on_destroy = false
 }
 
-# -------------------------------
-# 2. Create Artifact Registry
-# -------------------------------
+# --- 2. Artifact Registry Repository ---
 resource "google_artifact_registry_repository" "app_repo" {
   location      = var.gcp_region
   repository_id = "ai-apps-repo"
@@ -83,43 +83,15 @@ resource "google_artifact_registry_repository" "app_repo" {
   ]
 }
 
-# -------------------------------
-# 3. Build & Push Docker Image
-# -------------------------------
-resource "null_resource" "docker_build" {
-  # Only hash real source files, ignore Terraform internals/state
-  triggers = {
-    dir_sha1 = sha1(join("", [
-      for f in fileset(path.module, "**") :
-      filesha1(f)
-      if !startswith(f, ".terraform/")
-        && !startswith(f, ".git/")
-        && f != "terraform.tfstate"
-        && f != "terraform.tfstate.backup"
-    ]))
-  }
-
-  provisioner "local-exec" {
-    command = "gcloud builds submit . --tag ${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.app_repo.repository_id}/${var.subdomain}-app:latest --project ${var.gcp_project_id}"
-  }
-
-  depends_on = [
-    google_artifact_registry_repository.app_repo,
-    google_project_service.cloudbuild_api
-  ]
-}
-
-# -------------------------------
-# 4. Deploy Cloud Run Service
-# -------------------------------
+# --- 3. Cloud Run Service (assumes image already exists) ---
 resource "google_cloud_run_service" "webapp" {
-  # Dynamic naming: "aisave4u-www-service"
   name     = "${var.gcp_project_id}-${var.subdomain}-service"
   location = var.gcp_region
 
   template {
     spec {
       containers {
+        # IMPORTANT: this must match the tag you push with gcloud
         image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.app_repo.repository_id}/${var.subdomain}-app:latest"
 
         ports {
@@ -135,34 +107,32 @@ resource "google_cloud_run_service" "webapp" {
   }
 
   depends_on = [
-    null_resource.docker_build,
+    google_artifact_registry_repository.app_repo,
     google_project_service.run_api
   ]
 }
 
-# -------------------------------
-# 5. Make Cloud Run Public
-# -------------------------------
-resource "google_cloud_run_service_iam_member" "public_access" {
+# --- 4. IAM – allow YOUR account to invoke Cloud Run ---
+resource "google_cloud_run_service_iam_member" "invoker" {
   service  = google_cloud_run_service.webapp.name
   location = google_cloud_run_service.webapp.location
   role     = "roles/run.invoker"
-  member   = "allUsers"
+  member   = var.cloud_run_invoker_member
 }
 
-# -------------------------------
-# 6. Cloud Run Domain Mapping
-# -------------------------------
+# --- 5. Cloud Run Domain Mapping (asia-southeast1 supports this) ---
 resource "google_cloud_run_domain_mapping" "custom_domain" {
   location = var.gcp_region
   name     = "${var.subdomain}.${var.domain_name}"
+  project  = var.gcp_project_id
 
   metadata {
     namespace = var.gcp_project_id
   }
 
   spec {
-    route_name = google_cloud_run_service.webapp.name
+    certificate_mode = "AUTOMATIC"
+    route_name       = google_cloud_run_service.webapp.name
   }
 
   depends_on = [
@@ -170,9 +140,7 @@ resource "google_cloud_run_domain_mapping" "custom_domain" {
   ]
 }
 
-# -------------------------------
-# 7. Azure DNS CNAME Record
-# -------------------------------
+# --- 6. Azure DNS CNAME for www -> ghs.googlehosted.com ---
 resource "azurerm_dns_cname_record" "google_cname" {
   name                = var.subdomain
   zone_name           = var.domain_name
@@ -187,9 +155,8 @@ resource "azurerm_dns_cname_record" "google_cname" {
   }
 }
 
-# -------------------------------
-# Outputs
-# -------------------------------
+# --- Output ---
 output "webapp_url" {
-  value = google_cloud_run_service.webapp.status[0].url
+  description = "Default Cloud Run URL"
+  value       = google_cloud_run_service.webapp.status[0].url
 }
